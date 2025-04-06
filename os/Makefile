@@ -36,7 +36,7 @@ DISASM ?= -x
 # Run usertests or usershell
 TEST ?=
 
-build: env $(KERNEL_BIN) fs-img 
+build: env $(KERNEL_BIN) fs-img
 
 env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
@@ -100,13 +100,13 @@ run-inner: qemu-version-check build
 debug: qemu-version-check build
 	@tmux new-session -d \
 		"qemu-system-riscv64 $(QEMU_ARGS) -s -S" && \
-		tmux split-window -h "riscv64-unknown-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'" && \
+		tmux split-window -h "riscv64-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'" && \
 		tmux -2 attach-session -d
 
 gdbserver: qemu-version-check build
 	@qemu-system-riscv64 $(QEMU_ARGS) -s -S
 
 gdbclient:
-	@riscv64-unknown-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+	@riscv64-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
 .PHONY: build env kernel clean disasm disasm-vim run-inner fs-img gdbserver gdbclient fdt qemu-version-check
