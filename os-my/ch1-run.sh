@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# cargo clean
 cargo b -r
 rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/os -O binary target/riscv64gc-unknown-none-elf/release/os.bin
 

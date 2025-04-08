@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 sbi-rt = { version = "0.0.3", features = ["legacy"] }
+log = { version = "0.4" }
