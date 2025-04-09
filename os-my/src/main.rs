@@ -7,7 +7,8 @@ mod lang_items;
 mod logging;
 mod sbi;
 
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
+use core::ptr;
 
 use log::{debug, error, info, trace, warn};
 
@@ -31,6 +32,8 @@ pub fn rust_main() {
     clear_bss();
     logging::Logger::init();
     println!("[kernel], Hello, world!");
+    // read_sp();
+    // a_test_sp();
 
     trace!(
         "[kernel] .text [{:#x}, {:#x})",
@@ -53,7 +56,24 @@ pub fn rust_main() {
     sbi::shutdown(false);
 }
 
+pub fn read_sp() {
+    let mut fp: *const usize;
+    unsafe { asm!("mv {}, fp", out(reg) fp) }
+    while !fp.is_null() {
+        unsafe {
+            let return_address = ptr::read(fp.sub(1)); // ra
+            let old_fp = ptr::read(fp.sub(2)) as *const usize; // prev fp
+
+            println!("\nReturn address: 0x{:016x}", return_address);
+            println!("Old address: 0x{:016x}", old_fp as usize);
+            println!("");
+            fp = old_fp;
+        }
+    }
+}
+
 fn clear_bss() {
+    // read_sp();
     // unsafe extern "C" {
     //     safe static sbss: usize;
     //     safe static ebss: usize;
