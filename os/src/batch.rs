@@ -1,12 +1,12 @@
 //! batch subsystem
 
-use crate::sbi::shutdown;
-use crate::sync::UPSafeCell;
-use crate::trap::TrapContext;
-use core::arch::asm;
+use core::{arch::asm, ops::Range};
+
 use lazy_static::*;
 
-const USER_STACK_SIZE: usize = 4096 * 2;
+use crate::{sbi::shutdown, sync::UPSafeCell, trap::TrapContext};
+
+const USER_STACK_SIZE: usize = 4096;
 const KERNEL_STACK_SIZE: usize = 4096 * 2;
 const MAX_APP_NUM: usize = 16;
 const APP_BASE_ADDRESS: usize = 0x80400000;
@@ -22,12 +22,8 @@ struct UserStack {
     data: [u8; USER_STACK_SIZE],
 }
 
-static KERNEL_STACK: KernelStack = KernelStack {
-    data: [0; KERNEL_STACK_SIZE],
-};
-static USER_STACK: UserStack = UserStack {
-    data: [0; USER_STACK_SIZE],
-};
+static KERNEL_STACK: KernelStack = KernelStack { data: [0; KERNEL_STACK_SIZE] };
+static USER_STACK: UserStack = UserStack { data: [0; USER_STACK_SIZE] };
 
 impl KernelStack {
     fn get_sp(&self) -> usize {
@@ -55,6 +51,10 @@ struct AppManager {
 }
 
 impl AppManager {
+    pub fn current_app_size(&self) -> usize {
+        // when load one, current_app++ so use current_app..current_app -1
+        self.app_start[self.current_app] - self.app_start[self.current_app - 1]
+    }
     pub fn print_app_info(&self) {
         println!("[kernel] num_app = {}", self.num_app);
         for i in 0..self.num_app {
@@ -114,11 +114,7 @@ lazy_static! {
             let app_start_raw: &[usize] =
                 core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1);
             app_start[..=num_app].copy_from_slice(app_start_raw);
-            AppManager {
-                num_app,
-                current_app: 0,
-                app_start,
-            }
+            AppManager { num_app, current_app: 0, app_start }
         })
     };
 }
@@ -127,10 +123,25 @@ lazy_static! {
 pub fn init() {
     print_app_info();
 }
+/// get app range
+pub fn get_cur_app_range() -> Range<usize> {
+    APP_BASE_ADDRESS
+        ..APP_BASE_ADDRESS
+            + APP_MANAGER
+                .exclusive_access()
+                .current_app_size()
+}
+
+/// get user stack range
+pub fn get_user_stack_range() -> Range<usize> {
+    USER_STACK.get_sp() - USER_STACK_SIZE..USER_STACK.get_sp()
+}
 
 /// print apps info
 pub fn print_app_info() {
-    APP_MANAGER.exclusive_access().print_app_info();
+    APP_MANAGER
+        .exclusive_access()
+        .print_app_info();
 }
 
 /// run next app
