@@ -2,15 +2,19 @@ mod context;
 mod switch;
 mod task;
 
-use crate::loader::{get_num_app, get_app_data};
-use crate::trap::TrapContext;
-use crate::sync::UPSafeCell;
-use lazy_static::*;
-use switch::__switch;
-use task::{TaskControlBlock, TaskStatus};
 use alloc::vec::Vec;
 
 pub use context::TaskContext;
+use lazy_static::*;
+use switch::__switch;
+use task::{TaskControlBlock, TaskStatus};
+
+use crate::{
+    loader::{get_app_data, get_num_app},
+    mm::page_table::PageTable,
+    sync::UPSafeCell,
+    trap::TrapContext,
+};
 
 pub struct TaskManager {
     num_app: usize,
@@ -29,17 +33,11 @@ lazy_static! {
         println!("num_app = {}", num_app);
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
         for i in 0..num_app {
-            tasks.push(TaskControlBlock::new(
-                get_app_data(i),
-                i,
-            ));
+            tasks.push(TaskControlBlock::new(get_app_data(i), i));
         }
         TaskManager {
             num_app,
-            inner: unsafe { UPSafeCell::new(TaskManagerInner {
-                tasks,
-                current_task: 0,
-            })},
+            inner: unsafe { UPSafeCell::new(TaskManagerInner { tasks, current_task: 0 }) },
         }
     };
 }
@@ -54,10 +52,7 @@ impl TaskManager {
         let mut _unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped manually
         unsafe {
-            __switch(
-                &mut _unused as *mut _,
-                next_task_cx_ptr,
-            );
+            __switch(&mut _unused as *mut _, next_task_cx_ptr);
         }
         panic!("unreachable in run_first_task!");
     }
@@ -79,9 +74,7 @@ impl TaskManager {
         let current = inner.current_task;
         (current + 1..current + self.num_app + 1)
             .map(|id| id % self.num_app)
-            .find(|id| {
-                inner.tasks[*id].task_status == TaskStatus::Ready
-            })
+            .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
     }
 
     fn get_current_token(&self) -> usize {
@@ -105,15 +98,20 @@ impl TaskManager {
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {
-                __switch(
-                    current_task_cx_ptr,
-                    next_task_cx_ptr,
-                );
+                __switch(current_task_cx_ptr, next_task_cx_ptr);
             }
             // go back to user mode
-        } else {
+        }
+        else {
             panic!("All applications completed!");
         }
+    }
+
+    pub fn mmap(&self, start: usize, len: usize, prot: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let mm_set = &mut inner.tasks[current].memory_set;
+        mm_set.mmap(start, len, prot)
     }
 }
 
@@ -150,3 +148,4 @@ pub fn current_user_token() -> usize {
 pub fn current_trap_cx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_cx()
 }
+

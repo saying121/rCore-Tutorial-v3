@@ -1,6 +1,9 @@
 use crate::{
+    config::PAGE_SIZE,
     mm::{page_table::PageTable, PhysAddr, PhysPageNum, VirtAddr},
-    task::{exit_current_and_run_next, suspend_current_and_run_next},
+    task::{
+        current_user_token, exit_current_and_run_next, suspend_current_and_run_next, TASK_MANAGER,
+    },
     timer::get_time_us,
 };
 
@@ -51,4 +54,24 @@ fn get_pa(page_table: PageTable, sec: usize) -> *mut usize {
     sec_pa.0 += sec_va.page_offset();
     let sec_pa = sec_pa.0 as *mut usize;
     sec_pa
+}
+
+pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
+    if start % PAGE_SIZE != 0 {
+        return -1;
+    }
+
+    if prot & !0x7 != 0 {
+        return -1;
+    }
+
+    if prot & 0x7 == 0 {
+        return -1;
+    }
+
+    TASK_MANAGER.mmap(start, len, prot)
+}
+
+pub fn sys_munmap(start: usize, len: usize) -> isize {
+    unimplemented!()
 }
