@@ -11,7 +11,6 @@ use task::{TaskControlBlock, TaskStatus};
 
 use crate::{
     loader::{get_app_data, get_num_app},
-    mm::page_table::PageTable,
     sync::UPSafeCell,
     trap::TrapContext,
 };

@@ -52,8 +52,8 @@ fn get_pa(page_table: &PageTable, sec: usize) -> *mut usize {
 
     let mut sec_pa = PhysAddr::from(sec_ppn);
     sec_pa.0 += sec_va.page_offset();
-    let sec_pa = sec_pa.0 as *mut usize;
-    sec_pa
+    
+    sec_pa.0 as *mut usize
 }
 
 pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
