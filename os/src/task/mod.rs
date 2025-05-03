@@ -113,6 +113,13 @@ impl TaskManager {
         let mm_set = &mut inner.tasks[current].memory_set;
         mm_set.mmap(start, len, prot)
     }
+
+    pub fn munmap(&self, start: usize, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let mm_set = &mut inner.tasks[current].memory_set;
+        mm_set.munmap(start, len)
+    }
 }
 
 pub fn run_first_task() {
@@ -148,4 +155,3 @@ pub fn current_user_token() -> usize {
 pub fn current_trap_cx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_cx()
 }
-

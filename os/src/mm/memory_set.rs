@@ -236,6 +236,24 @@ impl MemorySet {
         );
         0
     }
+
+    pub fn munmap(&mut self, start: usize, len: usize) -> isize {
+        let start_va = VirtAddr::from(start);
+        let end_va = VirtAddr::from(end);
+
+        for vpn in SimpleRange::new(start_va.floor(), end_va.ceil()) {
+            match self.page_table.find_pte(vpn) {
+                Some(pte) => self.page_table.unmap(vpn),
+                None => return -1,
+            }
+        }
+
+        self.push(
+            MapArea::new(start_va, end_va, MapType::Framed, map_perm),
+            None,
+        );
+        0
+    }
 }
 
 pub struct MapArea {

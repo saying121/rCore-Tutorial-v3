@@ -73,5 +73,5 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
 }
 
 pub fn sys_munmap(start: usize, len: usize) -> isize {
-    unimplemented!()
+    TASK_MANAGER.munmap(start, len)
 }
