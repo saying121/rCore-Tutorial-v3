@@ -10,7 +10,8 @@ fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
             location.line(),
             err
         );
-    } else {
+    }
+    else {
         println!("Panicked: {}", err);
     }
     exit(-1);

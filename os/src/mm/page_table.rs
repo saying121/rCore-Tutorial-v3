@@ -1,7 +1,8 @@
-use super::{frame_alloc, PhysPageNum, FrameTracker, VirtPageNum, VirtAddr, StepByOne};
-use alloc::vec::Vec;
-use alloc::vec;
+use alloc::{vec, vec::Vec};
+
 use bitflags::*;
+
+use super::{frame_alloc, FrameTracker, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -29,9 +30,7 @@ impl PageTableEntry {
         }
     }
     pub fn empty() -> Self {
-        PageTableEntry {
-            bits: 0,
-        }
+        PageTableEntry { bits: 0 }
     }
     pub fn ppn(&self) -> PhysPageNum {
         (self.bits >> 10 & ((1usize << 44) - 1)).into()
@@ -147,7 +146,8 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
         end_va = end_va.min(VirtAddr::from(end));
         if end_va.page_offset() == 0 {
             v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
-        } else {
+        }
+        else {
             v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
         }
         start = end_va.into();

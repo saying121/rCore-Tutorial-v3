@@ -1,9 +1,10 @@
-use super::{PhysAddr, PhysPageNum};
 use alloc::vec::Vec;
-use crate::sync::UPSafeCell;
-use crate::config::MEMORY_END;
-use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
+
+use lazy_static::*;
+
+use super::{PhysAddr, PhysPageNum};
+use crate::{config::MEMORY_END, sync::UPSafeCell};
 
 pub struct FrameTracker {
     pub ppn: PhysPageNum,
@@ -61,9 +62,11 @@ impl FrameAllocator for StackFrameAllocator {
     fn alloc(&mut self) -> Option<PhysPageNum> {
         if let Some(ppn) = self.recycled.pop() {
             Some(ppn.into())
-        } else if self.current == self.end {
+        }
+        else if self.current == self.end {
             None
-        } else {
+        }
+        else {
             self.current += 1;
             Some((self.current - 1).into())
         }
@@ -71,9 +74,12 @@ impl FrameAllocator for StackFrameAllocator {
     fn dealloc(&mut self, ppn: PhysPageNum) {
         let ppn = ppn.0;
         // validity check
-        if ppn >= self.current || self.recycled
-            .iter()
-            .any(|v| {*v == ppn}) {
+        if ppn >= self.current
+            || self
+                .recycled
+                .iter()
+                .any(|v| *v == ppn)
+        {
             panic!("Frame ppn={:#x} has not been allocated!", ppn);
         }
         // recycle
@@ -84,9 +90,8 @@ impl FrameAllocator for StackFrameAllocator {
 type FrameAllocatorImpl = StackFrameAllocator;
 
 lazy_static! {
-    pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> = unsafe {
-        UPSafeCell::new(FrameAllocatorImpl::new())
-    };
+    pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> =
+        unsafe { UPSafeCell::new(FrameAllocatorImpl::new()) };
 }
 
 pub fn init_frame_allocator() {
@@ -95,7 +100,10 @@ pub fn init_frame_allocator() {
     }
     FRAME_ALLOCATOR
         .exclusive_access()
-        .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(MEMORY_END).floor());
+        .init(
+            PhysAddr::from(ekernel as usize).ceil(),
+            PhysAddr::from(MEMORY_END).floor(),
+        );
 }
 
 pub fn frame_alloc() -> Option<FrameTracker> {

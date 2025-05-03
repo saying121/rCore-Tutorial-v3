@@ -163,7 +163,7 @@ pub fn yield_() -> isize {
 pub fn get_time() -> isize {
     let time = TimeVal::new();
     match sys_get_time(&time, 0) {
-        0 => ((time.sec & 0xffff) * 1000 + time.usec / 1000) as isize,
+        0 => ((time.sec & 0xFFFF) * 1000 + time.usec / 1000) as isize,
         _ => -1,
     }
 }
@@ -189,10 +189,10 @@ pub fn wait(exit_code: &mut i32) -> isize {
         match sys_waitpid(-1, exit_code as *mut _) {
             -2 => {
                 sys_yield();
-            }
+            },
             n => {
                 return n;
-            }
+            },
         }
     }
 }
@@ -202,10 +202,10 @@ pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
         match sys_waitpid(pid as isize, exit_code as *mut _) {
             -2 => {
                 sys_yield();
-            }
+            },
             n => {
                 return n;
-            }
+            },
         }
     }
 }

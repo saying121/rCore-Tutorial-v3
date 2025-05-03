@@ -52,7 +52,7 @@ fn get_pa(page_table: &PageTable, sec: usize) -> *mut usize {
 
     let mut sec_pa = PhysAddr::from(sec_ppn);
     sec_pa.0 += sec_va.page_offset();
-    
+
     sec_pa.0 as *mut usize
 }
 

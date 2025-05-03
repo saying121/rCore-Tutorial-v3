@@ -6,9 +6,7 @@ extern crate user_lib;
 
 use user_lib::{mmap, munmap};
 
-/*
-理想结果：输出 Test 04_5 ummap OK!
-*/
+// 理想结果：输出 Test 04_5 ummap OK!
 
 #[no_mangle]
 fn main() -> i32 {

@@ -1,7 +1,9 @@
-use crate::mm::{MemorySet, MapPermission, PhysPageNum, KERNEL_SPACE, VirtAddr};
-use crate::trap::{TrapContext, trap_handler};
-use crate::config::{TRAP_CONTEXT, kernel_stack_position};
 use super::TaskContext;
+use crate::{
+    config::{kernel_stack_position, TRAP_CONTEXT},
+    mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE},
+    trap::{trap_handler, TrapContext},
+};
 
 pub struct TaskControlBlock {
     pub task_status: TaskStatus,
@@ -47,7 +49,9 @@ impl TaskControlBlock {
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
-            KERNEL_SPACE.exclusive_access().token(),
+            KERNEL_SPACE
+                .exclusive_access()
+                .token(),
             kernel_stack_top,
             trap_handler as usize,
         );

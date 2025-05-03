@@ -6,9 +6,7 @@ extern crate user_lib;
 
 use user_lib::mmap;
 
-/*
-理想结果：对于错误的 mmap 返回 -1，最终输出 Test 04_4 test OK!
-*/
+// 理想结果：对于错误的 mmap 返回 -1，最终输出 Test 04_4 test OK!
 
 #[no_mangle]
 fn main() -> i32 {
