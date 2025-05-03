@@ -1,8 +1,8 @@
-use crate::task::{
-    suspend_current_and_run_next,
-    exit_current_and_run_next,
+use crate::{
+    mm::{page_table::PageTable, PhysAddr, PhysPageNum, VirtAddr},
+    task::{exit_current_and_run_next, suspend_current_and_run_next},
+    timer::get_time_us,
 };
-use crate::timer::get_time_us;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -22,13 +22,33 @@ pub fn sys_yield() -> isize {
     0
 }
 
-pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
-    let _us = get_time_us();
-    // unsafe {
-    //     *ts = TimeVal {
-    //         sec: us / 1_000_000,
-    //         usec: us % 1_000_000,
-    //     };
-    // }
+pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
+    let token = current_user_token();
+    let page_table = PageTable::from_token(token);
+    let mut sec = ts as usize;
+    let mut usec = sec + 1;
+
+    let mut sec_pa = get_pa(page_table, sec);
+    let mut usec_pa = get_pa(page_table, usec);
+
+    let us = get_time_us();
+    unsafe {
+        *sec_pa = us / 1_000_000;
+        *usec_pa = us % 1_000_000;
+    }
     0
+}
+
+fn get_pa(page_table: PageTable, sec: usize) -> *mut usize {
+    let sec_va = VirtAddr::from(sec);
+    let mut sec_vpn = sec_va.floor();
+    let sec_ppn: PhysPageNum = page_table
+        .translate(sec_vpn)
+        .unwrap()
+        .ppn();
+
+    let mut sec_pa = PhysAddr::from(sec_ppn);
+    sec_pa.0 += sec_va.page_offset();
+    let sec_pa = sec_pa.0 as *mut usize;
+    sec_pa
 }
