@@ -220,6 +220,15 @@ impl MemorySet {
     pub fn mmap(&mut self, start: usize, len: usize, port: usize) -> isize {
         let start_va = VirtAddr::from(start);
         let end_va = VirtAddr::from(start + len);
+        if self
+            .areas
+            .iter()
+            .any(|a| a.is_mapped(start_va, end_va))
+        {
+            println!("is mapped");
+            return -1;
+        }
+
         // SAFETY: `port` must checked before the operation
         let map_perm =
             unsafe { MapPermission::from_bits_unchecked((port << 1) as u8) } | MapPermission::U;
@@ -262,6 +271,10 @@ pub struct MapArea {
 }
 
 impl MapArea {
+    pub fn is_mapped(&self, start_va: VirtAddr, end_va: VirtAddr) -> bool {
+        let range = self.vpn_range.l..self.vpn_range.r;
+        range.contains(&start_va.floor()) || range.contains(&end_va.ceil())
+    }
     pub fn new(
         start_va: VirtAddr,
         end_va: VirtAddr,

@@ -69,6 +69,9 @@ pub fn trap_handler() -> ! {
             set_next_trigger();
             suspend_current_and_run_next();
         },
+        Trap::Exception(Exception::LoadPageFault) => {
+            exit_current_and_run_next();
+        },
         _ => {
             panic!(
                 "Unsupported trap {:?}, stval = {:#x}!",
