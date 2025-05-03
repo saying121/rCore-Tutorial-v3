@@ -28,11 +28,11 @@ pub fn sys_yield() -> isize {
 pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     let token = current_user_token();
     let page_table = PageTable::from_token(token);
-    let mut sec = ts as usize;
-    let mut usec = sec + 1;
+    let sec = ts as usize;
+    let usec = sec + 1;
 
-    let mut sec_pa = get_pa(page_table, sec);
-    let mut usec_pa = get_pa(page_table, usec);
+    let sec_pa = get_pa(&page_table, sec);
+    let usec_pa = get_pa(&page_table, usec);
 
     let us = get_time_us();
     unsafe {
@@ -42,9 +42,9 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     0
 }
 
-fn get_pa(page_table: PageTable, sec: usize) -> *mut usize {
+fn get_pa(page_table: &PageTable, sec: usize) -> *mut usize {
     let sec_va = VirtAddr::from(sec);
-    let mut sec_vpn = sec_va.floor();
+    let sec_vpn = sec_va.floor();
     let sec_ppn: PhysPageNum = page_table
         .translate(sec_vpn)
         .unwrap()

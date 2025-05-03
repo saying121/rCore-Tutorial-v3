@@ -1,4 +1,5 @@
 use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
+use core::arch::asm;
 
 use lazy_static::*;
 use riscv::register::satp;
@@ -218,9 +219,10 @@ impl MemorySet {
 
     pub fn mmap(&mut self, start: usize, len: usize, port: usize) -> isize {
         let start_va = VirtAddr::from(start);
-        let end_va = VirtAddr::from(end);
+        let end_va = VirtAddr::from(start + len);
         // SAFETY: `port` must checked before the operation
-        let map_perm = unsafe { MapPermission::from_bits_unchecked(port << 1) } | MapPermission::U;
+        let map_perm =
+            unsafe { MapPermission::from_bits_unchecked((port << 1) as u8) } | MapPermission::U;
 
         for vpn in SimpleRange::new(start_va.floor(), end_va.ceil()) {
             if let Some(pte) = self.page_table.find_pte(vpn) {
@@ -239,19 +241,15 @@ impl MemorySet {
 
     pub fn munmap(&mut self, start: usize, len: usize) -> isize {
         let start_va = VirtAddr::from(start);
-        let end_va = VirtAddr::from(end);
+        let end_va = VirtAddr::from(start + len);
 
         for vpn in SimpleRange::new(start_va.floor(), end_va.ceil()) {
             match self.page_table.find_pte(vpn) {
-                Some(pte) => self.page_table.unmap(vpn),
+                Some(_) => self.page_table.unmap(vpn),
                 None => return -1,
             }
         }
 
-        self.push(
-            MapArea::new(start_va, end_va, MapType::Framed, map_perm),
-            None,
-        );
         0
     }
 }
