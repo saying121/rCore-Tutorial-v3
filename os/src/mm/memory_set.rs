@@ -222,7 +222,7 @@ impl MemorySet {
         // SAFETY: `port` must checked before the operation
         let map_perm = unsafe { MapPermission::from_bits_unchecked(port << 1) } | MapPermission::U;
 
-        for vpn in SimpleRange::new(start_va.floor(), end_va.floor()) {
+        for vpn in SimpleRange::new(start_va.floor(), end_va.ceil()) {
             if let Some(pte) = self.page_table.find_pte(vpn) {
                 if pte.is_valid() {
                     return -1;
@@ -234,6 +234,7 @@ impl MemorySet {
             MapArea::new(start_va, end_va, MapType::Framed, map_perm),
             None,
         );
+        0
     }
 }
 
