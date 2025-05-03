@@ -219,7 +219,8 @@ impl MemorySet {
     pub fn mmap(&mut self, start: usize, len: usize, port: usize) -> isize {
         let start_va = VirtAddr::from(start);
         let end_va = VirtAddr::from(end);
-        let map_perm = MapPermission::from_bits(port << 1).unwrap() | MapPermission::U;
+        // SAFETY: `port` must checked before the operation
+        let map_perm = unsafe { MapPermission::from_bits_unchecked(port << 1) } | MapPermission::U;
 
         for vpn in SimpleRange::new(start_va.floor(), end_va.floor()) {
             if let Some(pte) = self.page_table.find_pte(vpn) {
