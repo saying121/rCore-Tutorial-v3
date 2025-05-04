@@ -225,7 +225,6 @@ impl MemorySet {
             .iter()
             .any(|a| a.is_mapped(start_va, end_va))
         {
-            println!("is mapped");
             return -1;
         }
 
@@ -254,9 +253,22 @@ impl MemorySet {
 
         for vpn in SimpleRange::new(start_va.floor(), end_va.ceil()) {
             match self.page_table.find_pte(vpn) {
-                Some(_) => self.page_table.unmap(vpn),
+                Some(pte) => {
+                    if !pte.is_valid() {
+                        return -1;
+                    }
+                    self.page_table.unmap(vpn)
+                },
                 None => return -1,
             }
+        }
+        let f = self
+            .areas
+            .iter()
+            .enumerate()
+            .find(|(_, a)| a.is_mapped(start_va, end_va));
+        if let Some((idx, _)) = f {
+            self.areas.remove(idx);
         }
 
         0
@@ -273,7 +285,7 @@ pub struct MapArea {
 impl MapArea {
     pub fn is_mapped(&self, start_va: VirtAddr, end_va: VirtAddr) -> bool {
         let range = self.vpn_range.l..self.vpn_range.r;
-        range.contains(&start_va.floor()) || range.contains(&end_va.ceil())
+        range.contains(&start_va.floor()) || range.contains(&end_va.floor())
     }
     pub fn new(
         start_va: VirtAddr,
