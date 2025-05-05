@@ -1,17 +1,17 @@
-use crate::task::{
-    suspend_current_and_run_next,
-    exit_current_and_run_next,
-    current_task,
-    current_user_token,
-    add_task,
-};
-use crate::mm::{
-    translated_str,
-    translated_refmut,
-};
-use crate::loader::get_app_data_by_name;
 use alloc::sync::Arc;
-use crate::timer::get_time_us;
+
+use crate::{
+    config::PAGE_SIZE,
+    loader::get_app_data_by_name,
+    mm::{
+        page_table::PageTable, translated_refmut, translated_str, PhysAddr, PhysPageNum, VirtAddr,
+    },
+    task::{
+        add_task, current_task, current_user_token, exit_current_and_run_next,
+        manager::TASK_MANAGER, suspend_current_and_run_next,
+    },
+    timer::get_time_us,
+};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -68,21 +68,20 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
     // ---- access current TCB exclusively
     let mut inner = task.inner_exclusive_access();
-    if inner.children
+    if inner
+        .children
         .iter()
-        .find(|p| {pid == -1 || pid as usize == p.getpid()})
-        .is_none() {
+        .find(|p| pid == -1 || pid as usize == p.getpid())
+        .is_none()
+    {
         return -1;
         // ---- release current PCB
     }
-    let pair = inner.children
-        .iter()
-        .enumerate()
-        .find(|(_, p)| {
-            // ++++ temporarily access child PCB lock exclusively
-            p.inner_exclusive_access().is_zombie() && (pid == -1 || pid as usize == p.getpid())
-            // ++++ release child PCB
-        });
+    let pair = inner.children.iter().enumerate().find(|(_, p)| {
+        // ++++ temporarily access child PCB lock exclusively
+        p.inner_exclusive_access().is_zombie() && (pid == -1 || pid as usize == p.getpid())
+        // ++++ release child PCB
+    });
     if let Some((idx, _)) = pair {
         let child = inner.children.remove(idx);
         // confirm that child will be deallocated after removing from children list
@@ -99,13 +98,49 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     // ---- release current PCB lock automatically
 }
 
-pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
-    let _us = get_time_us();
-    // unsafe {
-    //     *ts = TimeVal {
-    //         sec: us / 1_000_000,
-    //         usec: us % 1_000_000,
-    //     };
-    // }
+pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
+    let token = current_user_token();
+    let page_table = PageTable::from_token(token);
+    let sec = ts as usize;
+
+    let sec_pa = get_pa(&page_table, sec);
+    let usec_pa = unsafe { sec_pa.add(1) };
+
+    let us = get_time_us();
+    unsafe {
+        *sec_pa = us / 1_000_000;
+        *usec_pa = us % 1_000_000;
+    }
     0
+}
+
+fn get_pa(page_table: &PageTable, sec: usize) -> *mut usize {
+    let sec_va = VirtAddr::from(sec);
+    let sec_vpn = sec_va.floor();
+    let sec_ppn: PhysPageNum = page_table.translate(sec_vpn).unwrap().ppn();
+
+    let mut sec_pa = PhysAddr::from(sec_ppn);
+    sec_pa.0 += sec_va.page_offset();
+
+    sec_pa.0 as *mut usize
+}
+
+pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
+    if start % PAGE_SIZE != 0 {
+        return -1;
+    }
+
+    if prot & !0x7 != 0 {
+        return -1;
+    }
+
+    if prot & 0x7 == 0 {
+        return -1;
+    }
+
+    current_task().unwrap().mmap(start, len, prot)
+}
+
+pub fn sys_munmap(start: usize, len: usize) -> isize {
+    current_task().unwrap().munmap(start, len)
 }
