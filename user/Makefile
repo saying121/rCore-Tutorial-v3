@@ -28,8 +28,8 @@ pre:
 	@mkdir -p $(BUILD_DIR)/elf/
 	@mkdir -p $(BUILD_DIR)/app/
 	@$(foreach t, $(APPS), cp $(t) $(BUILD_DIR)/app/;)
-	
-build: clean pre binary 
+
+build: pre binary
 	@$(foreach t, $(ELFS), cp $(t).bin $(BUILD_DIR)/bin/;)
 	@$(foreach t, $(ELFS), cp $(t).elf $(BUILD_DIR)/elf/;)
 

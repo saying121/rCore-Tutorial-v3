@@ -1,7 +1,7 @@
 mod heap_allocator;
 mod address;
 mod frame_allocator;
-mod page_table;
+pub mod page_table;
 mod memory_set;
 
 use page_table::{PageTable, PTEFlags};
