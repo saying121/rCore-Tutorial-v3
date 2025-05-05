@@ -29,10 +29,11 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     let token = current_user_token();
     let page_table = PageTable::from_token(token);
     let sec = ts as usize;
-    let usec = sec + 1;
+    // let usec = sec + 1;
 
     let sec_pa = get_pa(&page_table, sec);
-    let usec_pa = get_pa(&page_table, usec);
+    // let usec_pa = get_pa(&page_table, usec);
+    let usec_pa = unsafe { sec_pa.add(1) };
 
     let us = get_time_us();
     unsafe {
