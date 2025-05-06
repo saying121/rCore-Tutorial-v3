@@ -11,7 +11,7 @@ struct KernelStack {
 
 #[repr(align(4096))]
 #[derive(Copy, Clone)]
-struct UserStack {
+pub struct UserStack {
     data: [u8; USER_STACK_SIZE],
 }
 
@@ -19,7 +19,7 @@ static KERNEL_STACK: [KernelStack; MAX_APP_NUM] = [KernelStack {
     data: [0; KERNEL_STACK_SIZE],
 }; MAX_APP_NUM];
 
-static USER_STACK: [UserStack; MAX_APP_NUM] = [UserStack {
+pub static USER_STACK: [UserStack; MAX_APP_NUM] = [UserStack {
     data: [0; USER_STACK_SIZE],
 }; MAX_APP_NUM];
 
@@ -37,12 +37,12 @@ impl KernelStack {
 }
 
 impl UserStack {
-    fn get_sp(&self) -> usize {
+    pub fn get_sp(&self) -> usize {
         self.data.as_ptr() as usize + USER_STACK_SIZE
     }
 }
 
-fn get_base_i(app_id: usize) -> usize {
+pub fn get_base_i(app_id: usize) -> usize {
     APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
 }
 

@@ -2,8 +2,10 @@ mod context;
 mod switch;
 mod task;
 
-use crate::config::MAX_APP_NUM;
-use crate::loader::{get_num_app, init_app_cx};
+use core::ops::Range;
+
+use crate::config::{MAX_APP_NUM, USER_STACK_SIZE};
+use crate::loader::{get_base_i, get_num_app, init_app_cx, USER_STACK};
 use crate::sync::UPSafeCell;
 use lazy_static::*;
 use switch::__switch;
@@ -13,7 +15,7 @@ pub use context::TaskContext;
 
 pub struct TaskManager {
     num_app: usize,
-    inner: UPSafeCell<TaskManagerInner>,
+    pub inner: UPSafeCell<TaskManagerInner>,
 }
 
 struct TaskManagerInner {
@@ -97,6 +99,25 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+}
+/// get app range
+pub fn get_cur_app_range() -> Range<usize> {
+    extern "C" {
+        fn _num_app();
+    }
+    let num_app_ptr = _num_app as usize as *const usize;
+    let num_app = get_num_app();
+    let app_start = unsafe { core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1) };
+    let cur_task = TASK_MANAGER.inner.exclusive_access().current_task;
+    let cur_base = get_base_i(cur_task);
+    // cur_base..cur_base + (app_start[cur_task] - app_start[cur_task - 1])
+    cur_base..cur_base + (app_start[cur_task] - app_start[cur_task + 1])
+}
+
+/// get user stack range
+pub fn get_user_stack_range() -> Range<usize> {
+    let cur_task = TASK_MANAGER.inner.exclusive_access().current_task;
+    USER_STACK[cur_task].get_sp() - USER_STACK_SIZE..USER_STACK[cur_task].get_sp()
 }
 
 pub fn run_first_task() {

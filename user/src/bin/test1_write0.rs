@@ -5,6 +5,7 @@
 #[macro_use]
 extern crate user_lib;
 extern crate core;
+use core::arch::asm;
 use core::slice;
 use user_lib::{write, STDOUT};
 
