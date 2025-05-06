@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use crate::trap::TrapContext;
 use crate::config::*;
 
