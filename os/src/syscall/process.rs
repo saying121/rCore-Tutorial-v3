@@ -8,7 +8,7 @@ use crate::{
     },
     task::{
         add_task, current_task, current_user_token, exit_current_and_run_next,
-        manager::TASK_MANAGER, suspend_current_and_run_next,
+        suspend_current_and_run_next, task::TaskControlBlock,
     },
     timer::get_time_us,
 };
@@ -143,4 +143,29 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
 
 pub fn sys_munmap(start: usize, len: usize) -> isize {
     current_task().unwrap().munmap(start, len)
+}
+
+pub fn sys_spawn(path: *const u8) -> isize {
+    let token = current_user_token();
+    let path = translated_str(token, path);
+
+    let Some(data) = get_app_data_by_name(&path) else {
+        return -1;
+    };
+
+    let tcb = Arc::new(TaskControlBlock::new(data));
+    let pid = tcb.pid.0;
+    {
+        let mut new_tcb_inner = tcb.inner_exclusive_access();
+        let parent_task = current_task().unwrap();
+        new_tcb_inner.parent = Some(Arc::downgrade(&parent_task));
+        new_tcb_inner.get_trap_cx().x[10] = 0;
+
+        let mut parent_inner = parent_task.inner_exclusive_access();
+        parent_inner.children.push(tcb.clone());
+    }
+
+    add_task(tcb);
+
+    pid as isize
 }
