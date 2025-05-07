@@ -169,3 +169,17 @@ pub fn sys_spawn(path: *const u8) -> isize {
 
     pid as isize
 }
+
+// syscall ID：140
+// 设置当前进程优先级为 prio
+// 参数：prio 进程优先级，要求 prio >= 2
+// 返回值：如果输入合法则返回 prio，否则返回 -1
+pub fn sys_set_priority(prio: isize) -> isize {
+    if prio <= 1 {
+        return -1;
+    }
+    let cur_task = current_task().unwrap();
+    let mut task = cur_task.inner_exclusive_access();
+    task.set_pass(prio);
+    prio
+}

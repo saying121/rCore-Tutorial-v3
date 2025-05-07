@@ -1,6 +1,6 @@
 use super::TaskContext;
 use super::{pid_alloc, KernelStack, PidHandle};
-use crate::config::TRAP_CONTEXT;
+use crate::config::{BIG_STRIDE, DEFAULT_PRIO, TRAP_CONTEXT};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
@@ -16,6 +16,31 @@ pub struct TaskControlBlock {
     inner: UPSafeCell<TaskControlBlockInner>,
 }
 
+impl Eq for TaskControlBlock {}
+
+impl Ord for TaskControlBlock {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // reverse for min-heap
+        other
+            .inner
+            .exclusive_access()
+            .stride
+            .cmp(&self.inner.exclusive_access().stride)
+    }
+}
+
+impl PartialEq for TaskControlBlock {
+    fn eq(&self, other: &Self) -> bool {
+        self.pid.0 == other.pid.0
+    }
+}
+
+impl PartialOrd for TaskControlBlock {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 pub struct TaskControlBlockInner {
     pub trap_cx_ppn: PhysPageNum,
     pub base_size: usize,
@@ -25,9 +50,17 @@ pub struct TaskControlBlockInner {
     pub parent: Option<Weak<TaskControlBlock>>,
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
+    pub stride: isize,
+    pub pass: isize,
 }
 
 impl TaskControlBlockInner {
+    pub fn set_pass(&mut self, prio: isize) {
+        self.pass = BIG_STRIDE / prio
+    }
+    pub fn add_stride(&mut self) {
+        self.stride += self.pass;
+    }
     /*
     pub fn get_task_cx_ptr2(&self) -> *const usize {
         &self.task_cx_ptr as *const usize
@@ -76,6 +109,8 @@ impl TaskControlBlock {
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
+                    stride: 0,
+                    pass: BIG_STRIDE / DEFAULT_PRIO,
                 })
             },
         };
@@ -141,6 +176,8 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
+                    stride: 0,
+                    pass: BIG_STRIDE / DEFAULT_PRIO,
                 })
             },
         });
