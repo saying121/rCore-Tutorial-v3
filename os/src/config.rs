@@ -5,7 +5,7 @@ pub const KERNEL_HEAP_SIZE: usize = 0x20_0000;
 #[cfg(feature = "board_k210")]
 pub const MEMORY_END: usize = 0x80600000;
 
-#[cfg(feature = "board_qemu")]
+// #[cfg(feature = "board_qemu")]
 pub const MEMORY_END: usize = 0x80f00000;
 
 pub const PAGE_SIZE: usize = 0x1000;

@@ -181,6 +181,17 @@ impl TaskControlBlock {
     pub fn getpid(&self) -> usize {
         self.pid.0
     }
+    pub fn mmap(&self, start: usize, len: usize, prot: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let mm_set = &mut inner.memory_set;
+        mm_set.mmap(start, len, prot)
+    }
+
+    pub fn munmap(&self, start: usize, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let mm_set = &mut inner.memory_set;
+        mm_set.munmap(start, len)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
