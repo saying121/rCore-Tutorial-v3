@@ -3,7 +3,7 @@ mod manager;
 mod pid;
 mod processor;
 mod switch;
-mod task;
+pub mod task;
 
 use crate::loader::get_app_data_by_name;
 use alloc::sync::Arc;
