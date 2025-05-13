@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use super::{Stat, TimeVal};
 
 pub const SYSCALL_OPENAT: usize = 56;
@@ -146,7 +148,10 @@ pub fn sys_fork() -> isize {
 }
 
 pub fn sys_exec(path: &str, args: &[*const u8]) -> isize {
-    syscall(SYSCALL_EXEC, [path.as_ptr() as usize, args.as_ptr() as usize, 0])
+    syscall(
+        SYSCALL_EXEC,
+        [path.as_ptr() as usize, args.as_ptr() as usize, 0],
+    )
 }
 
 pub fn sys_waitpid(pid: isize, xstatus: *mut i32) -> isize {

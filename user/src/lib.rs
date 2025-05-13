@@ -1,7 +1,5 @@
 #![no_std]
-#![feature(asm)]
 #![feature(linkage)]
-#![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
 #[macro_use]
@@ -11,8 +9,7 @@ mod syscall;
 
 extern crate alloc;
 extern crate core;
-#[macro_use]
-extern crate bitflags;
+use bitflags::bitflags;
 
 use buddy_system_allocator::LockedHeap;
 use alloc::vec::Vec;

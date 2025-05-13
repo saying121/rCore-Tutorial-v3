@@ -5,7 +5,7 @@ use lazy_static::*;
 use alloc::sync::Arc;
 use easy_fs::BlockDevice;
 
-#[cfg(feature = "board_qemu")]
+// #[cfg(feature = "board_qemu")]
 type BlockDeviceImpl = virtio_blk::VirtIOBlock;
 
 #[cfg(feature = "board_k210")]
