@@ -3,6 +3,7 @@ use crate::fs::{open_file, OpenFlags};
 use crate::mm::{
     translated_ref, translated_refmut, translated_str, PageTable, PhysAddr, PhysPageNum, VirtAddr,
 };
+use crate::task::task::TaskControlBlock;
 use crate::task::{
     add_task, current_task, current_user_token, exit_current_and_run_next,
     suspend_current_and_run_next,
@@ -154,4 +155,30 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
         -2
     }
     // ---- release current PCB automatically
+}
+
+pub fn sys_spawn(path: *const u8) -> isize {
+    let token = current_user_token();
+    let path = translated_str(token, path);
+
+    let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) else {
+        return -1;
+    };
+    let data = app_inode.read_all();
+
+    let tcb = Arc::new(TaskControlBlock::new(&data));
+    let pid = tcb.pid.0;
+    {
+        let mut new_tcb_inner = tcb.inner_exclusive_access();
+        let parent_task = current_task().unwrap();
+        new_tcb_inner.parent = Some(Arc::downgrade(&parent_task));
+        new_tcb_inner.get_trap_cx().x[10] = 0;
+
+        let mut parent_inner = parent_task.inner_exclusive_access();
+        parent_inner.children.push(tcb.clone());
+    }
+
+    add_task(tcb);
+
+    pid as isize
 }

@@ -3,7 +3,7 @@ mod manager;
 mod pid;
 mod processor;
 mod switch;
-mod task;
+pub mod task;
 
 use crate::fs::{open_file, OpenFlags};
 use alloc::sync::Arc;
