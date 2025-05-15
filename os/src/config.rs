@@ -15,6 +15,8 @@ pub const CLOCK_FREQ: usize = 403000000 / 62;
 
 // #[cfg(feature = "board_qemu")]
 pub const CLOCK_FREQ: usize = 12500000;
+pub const BIG_STRIDE: isize = 1_0000;
+pub const DEFAULT_PRIO: isize = 16;
 
 #[cfg(feature = "board_qemu")]
 pub const MMIO: &[(usize, usize)] = &[(0x10001000, 0x1000)];

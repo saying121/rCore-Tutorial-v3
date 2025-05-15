@@ -1,6 +1,6 @@
 use super::TaskContext;
 use super::{pid_alloc, KernelStack, PidHandle};
-use crate::config::TRAP_CONTEXT;
+use crate::config::{BIG_STRIDE, DEFAULT_PRIO, TRAP_CONTEXT};
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
@@ -19,6 +19,31 @@ pub struct TaskControlBlock {
     inner: UPSafeCell<TaskControlBlockInner>,
 }
 
+impl Eq for TaskControlBlock {}
+
+impl Ord for TaskControlBlock {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // reverse for min-heap
+        other
+            .inner
+            .exclusive_access()
+            .stride
+            .cmp(&self.inner.exclusive_access().stride)
+    }
+}
+
+impl PartialEq for TaskControlBlock {
+    fn eq(&self, other: &Self) -> bool {
+        self.pid.0 == other.pid.0
+    }
+}
+
+impl PartialOrd for TaskControlBlock {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 pub struct TaskControlBlockInner {
     pub trap_cx_ppn: PhysPageNum,
     pub base_size: usize,
@@ -29,9 +54,17 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
+    pub stride: isize,
+    pub pass: isize,
 }
 
 impl TaskControlBlockInner {
+    pub fn set_pass(&mut self, prio: isize) {
+        self.pass = BIG_STRIDE / prio
+    }
+    pub fn add_stride(&mut self) {
+        self.stride += self.pass;
+    }
     pub fn get_trap_cx(&self) -> &'static mut TrapContext {
         self.trap_cx_ppn.get_mut()
     }
@@ -90,6 +123,8 @@ impl TaskControlBlock {
                         // 2 -> stderr
                         Some(Arc::new(Stdout)),
                     ],
+                    stride: 0,
+                    pass: BIG_STRIDE / DEFAULT_PRIO,
                 })
             },
         };
@@ -191,6 +226,8 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     fd_table: new_fd_table,
+                    stride: 0,
+                    pass: BIG_STRIDE / DEFAULT_PRIO,
                 })
             },
         });

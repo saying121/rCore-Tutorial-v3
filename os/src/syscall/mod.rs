@@ -14,6 +14,7 @@ const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_MUNMAP: usize = 215;
 const SYSCALL_MMAP: usize = 222;
 const SYSCALL_SPAWN: usize = 400;
+const SYSCALL_SET_PRIO: usize = 140;
 
 mod fs;
 mod process;
@@ -39,6 +40,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_MMAP => sys_mmap(args[0], args[1], args[2]),
         SYSCALL_MUNMAP => sys_munmap(args[0], args[1]),
         SYSCALL_SPAWN => sys_spawn(args[0] as *const u8),
+        SYSCALL_SET_PRIO => sys_set_priority(args[0] as isize),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }
