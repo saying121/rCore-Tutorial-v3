@@ -1,4 +1,5 @@
-use crate::fs::{make_pipe, open_file, OpenFlags};
+use crate::fs::inode::ROOT_INODE;
+use crate::fs::{make_pipe, open_file, OpenFlags, Stat};
 use crate::mm::{translated_byte_buffer, translated_refmut, translated_str, UserBuffer};
 use crate::task::{current_task, current_user_token};
 use alloc::sync::Arc;
@@ -96,4 +97,38 @@ pub fn sys_dup(fd: usize) -> isize {
     let new_fd = inner.alloc_fd();
     inner.fd_table[new_fd] = Some(Arc::clone(inner.fd_table[fd].as_ref().unwrap()));
     new_fd as isize
+}
+
+pub fn sys_linkat(old_path: *const u8, new_path: *const u8) -> isize {
+    let token = current_user_token();
+    let old = translated_str(token, old_path);
+    let new = translated_str(token, new_path);
+    ROOT_INODE.linkat(&old, &new)
+}
+
+pub fn sys_unlinkat(path: *const u8) -> isize {
+    let token = current_user_token();
+    let path = translated_str(token, path);
+    ROOT_INODE.unlink(&path)
+}
+
+pub fn sys_fstat(fd: i32, st: *mut Stat) -> isize {
+    let fd = fd as usize;
+
+    let task = current_task().unwrap();
+    let inner = task.inner_exclusive_access();
+    if fd >= inner.fd_table.len() {
+        return -1;
+    }
+
+    let Some(fd) = &inner.fd_table[fd].clone() else {
+        return -1;
+    };
+    drop(inner);
+    let fd = fd.clone();
+    let token = current_user_token();
+    let st = translated_refmut(token, st);
+    *st = fd.stat();
+
+    0
 }

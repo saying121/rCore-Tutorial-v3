@@ -165,4 +165,8 @@ impl File for Pipe {
             }
         }
     }
+
+    fn stat(&self) -> super::Stat {
+        todo!()
+    }
 }

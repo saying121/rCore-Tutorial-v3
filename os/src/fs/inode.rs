@@ -1,4 +1,4 @@
-use super::File;
+use super::{File, Stat, StatMode};
 use crate::drivers::BLOCK_DEVICE;
 use crate::mm::UserBuffer;
 use crate::sync::UPSafeCell;
@@ -135,5 +135,21 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+
+    fn stat(&self) -> Stat {
+        let inner = self.inner.exclusive_access();
+        let mode = if inner.inode.is_file() {
+            StatMode::FILE
+        } else {
+            StatMode::DIR
+        };
+        Stat {
+            dev: 0,
+            ino: inner.inode.inode(),
+            mode,
+            nlink: inner.inode.nlink(),
+            pad: [0; 7],
+        }
     }
 }

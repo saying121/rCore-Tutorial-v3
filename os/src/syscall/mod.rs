@@ -15,6 +15,9 @@ const SYSCALL_MUNMAP: usize = 215;
 const SYSCALL_MMAP: usize = 222;
 const SYSCALL_SPAWN: usize = 400;
 const SYSCALL_SET_PRIO: usize = 140;
+const SYSCALL_LINK_AT: usize = 37;
+const SYSCALL_UNLINK_AT: usize = 35;
+const SYSCALL_FSTAT: usize = 80;
 
 mod fs;
 mod process;
@@ -22,7 +25,7 @@ mod process;
 use fs::*;
 use process::*;
 
-pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
     match syscall_id {
         SYSCALL_DUP => sys_dup(args[0]),
         SYSCALL_OPEN => sys_open(args[1] as *const u8, args[2] as u32),
@@ -41,6 +44,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_MUNMAP => sys_munmap(args[0], args[1]),
         SYSCALL_SPAWN => sys_spawn(args[0] as *const u8),
         SYSCALL_SET_PRIO => sys_set_priority(args[0] as isize),
+        SYSCALL_LINK_AT => sys_linkat(args[1] as *const u8, args[3] as *const u8),
+        SYSCALL_UNLINK_AT => sys_unlinkat(args[1] as *const u8),
+        SYSCALL_FSTAT => sys_fstat(args[0] as i32, args[1] as *mut _),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

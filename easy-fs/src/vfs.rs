@@ -15,6 +15,91 @@ pub struct Inode {
 }
 
 impl Inode {
+    pub fn unlink(&self, name: &str) -> isize {
+        let Some(inode) = self.find(name) else {
+            return -1;
+        };
+        inode.modify_disk_inode(|d| {
+            d.sub_nlink();
+            d.nlink
+        });
+
+        let nlink = inode.nlink();
+        self.modify_disk_inode(|d| {
+            let count = d.size as usize / DIRENT_SZ;
+            let mut direntry = DirEntry::empty();
+
+            for i in 0..count {
+                d.read_at(i * DIRENT_SZ, direntry.as_bytes_mut(), &self.block_device);
+                if direntry.name() == name {
+                    d.write_at(
+                        i * DIRENT_SZ,
+                        DirEntry::empty().as_bytes(),
+                        &self.block_device,
+                    );
+                    break;
+                }
+            }
+        });
+        if nlink == 0 {
+            inode.clear();
+        }
+        nlink as isize
+    }
+
+    pub fn linkat(&self, old: &str, new: &str) -> isize {
+        let (Some(old_inode), None) = (self.find(old), self.find(new)) else {
+            return -1;
+        };
+        old_inode.modify_disk_inode(|d| d.add_nlink());
+
+        let mut new_inode_id = self
+            .read_disk_inode(|d| self.find_inode_id(old, d))
+            .unwrap();
+
+        let mut fs = self.fs.lock();
+
+        self.modify_disk_inode(|disk_indoe| {
+            let file_count = (disk_indoe.size as usize) / DIRENT_SZ;
+            let new_size = (file_count + 1) * DIRENT_SZ;
+
+            self.increase_size(new_size as u32, disk_indoe, &mut fs);
+
+            let direntry = DirEntry::new(new, new_inode_id);
+            disk_indoe.write_at(
+                file_count * DIRENT_SZ,
+                &direntry.as_bytes(),
+                &self.block_device,
+            )
+        });
+        new_inode_id+=1;
+
+        block_cache_sync_all();
+
+        new_inode_id as isize
+    }
+    pub fn nlink(&self) -> u32 {
+        self.read_disk_inode(|di| di.nlink())
+    }
+    pub fn add_nlink(&mut self) {
+        self.modify_disk_inode(|d| {
+            d.add_nlink();
+        })
+    }
+    pub fn sub_nlink(&mut self) {
+        self.modify_disk_inode(|d| {
+            d.sub_nlink();
+        })
+    }
+    pub fn is_file(&self) -> bool {
+        self.read_disk_inode(|di| di.is_file())
+    }
+    pub fn is_dir(&self) -> bool {
+        self.read_disk_inode(|di| di.is_dir())
+    }
+    pub fn inode(&self) -> u64 {
+        self.block_id as _
+    }
     /// We should not acquire efs lock here.
     pub fn new(
         block_id: u32,
