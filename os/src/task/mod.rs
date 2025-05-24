@@ -14,6 +14,7 @@ use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 
 pub use manager::add_task;
+pub use manager::get_task;
 pub use pid::{pid_alloc, KernelStack, PidHandle};
 pub use processor::{
     current_task, current_trap_cx, current_user_token, run_tasks, schedule, take_current_task,

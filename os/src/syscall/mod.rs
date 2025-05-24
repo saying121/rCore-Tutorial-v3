@@ -18,6 +18,8 @@ const SYSCALL_SET_PRIO: usize = 140;
 const SYSCALL_LINK_AT: usize = 37;
 const SYSCALL_UNLINK_AT: usize = 35;
 const SYSCALL_FSTAT: usize = 80;
+const SYSCALL_MAILREAD: usize = 401;
+const SYSCALL_MAILWRITE: usize = 402;
 
 mod fs;
 mod process;
@@ -47,6 +49,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
         SYSCALL_LINK_AT => sys_linkat(args[1] as *const u8, args[3] as *const u8),
         SYSCALL_UNLINK_AT => sys_unlinkat(args[1] as *const u8),
         SYSCALL_FSTAT => sys_fstat(args[0] as i32, args[1] as *mut _),
+        SYSCALL_MAILREAD => sys_mail_read(args[0] as _, args[1]),
+        SYSCALL_MAILWRITE => sys_mail_write(args[0], args[1] as _, args[2]),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

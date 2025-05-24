@@ -5,6 +5,7 @@ use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
+use alloc::collections::vec_deque::VecDeque;
 use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec;
@@ -56,6 +57,7 @@ pub struct TaskControlBlockInner {
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
     pub stride: isize,
     pub pass: isize,
+    pub mail: VecDeque<Vec<u8>>,
 }
 
 impl TaskControlBlockInner {
@@ -125,6 +127,7 @@ impl TaskControlBlock {
                     ],
                     stride: 0,
                     pass: BIG_STRIDE / DEFAULT_PRIO,
+                    mail: VecDeque::new(),
                 })
             },
         };
@@ -228,6 +231,7 @@ impl TaskControlBlock {
                     fd_table: new_fd_table,
                     stride: 0,
                     pass: BIG_STRIDE / DEFAULT_PRIO,
+                    mail: VecDeque::new(),
                 })
             },
         });

@@ -1,8 +1,11 @@
 use crate::fs::inode::ROOT_INODE;
 use crate::fs::{make_pipe, open_file, OpenFlags, Stat};
-use crate::mm::{translated_byte_buffer, translated_refmut, translated_str, UserBuffer};
-use crate::task::{current_task, current_user_token};
+use crate::mm::{
+    translated_byte_buffer, translated_refmut, translated_str, PageTable, UserBuffer, VirtAddr,
+};
+use crate::task::{self, current_task, current_user_token};
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let token = current_user_token();
@@ -130,5 +133,96 @@ pub fn sys_fstat(fd: i32, st: *mut Stat) -> isize {
     let st = translated_refmut(token, st);
     *st = fd.stat();
 
+    0
+}
+
+pub fn sys_mail_read(buf: *mut u8, len: usize) -> isize {
+    let len = if len > 256 { 256 } else { len };
+    // println!("read: {}", len);
+
+    let token = current_user_token();
+
+    if -1 == fun_name(buf, len, token) {
+        return -1;
+    }
+    let task = current_task().unwrap();
+    let mut inner = task.inner_exclusive_access();
+    if inner.mail.is_empty() {
+        return -1;
+    }
+    if len == 0 {
+        return 0;
+    }
+    let Some(frame) = inner.mail.pop_front() else {
+        return -1;
+    };
+
+    let readed_buf = translated_byte_buffer(token, buf, len);
+    let mut user_buf = UserBuffer::new(readed_buf).into_iter();
+
+    let mut res = 0;
+    for (i, &ele) in frame.iter().enumerate().take(len) {
+        if let Some(b) = user_buf.next() {
+            res = i + 1;
+            unsafe { *b = ele };
+        } else {
+            break;
+        }
+    }
+
+    // if res == 0 {
+    //     return -1;
+    // }
+    res as _
+}
+
+pub fn sys_mail_write(pid: usize, buf: *mut u8, len: usize) -> isize {
+    let len = if len > 256 { 256 } else { len };
+    // println!("write: {}", len);
+
+    let token = current_user_token();
+
+    if -1 == fun_name(buf, len, token) {
+        return -1;
+    }
+
+    let target = crate::task::get_task(pid).unwrap();
+    let mut inner = target.inner_exclusive_access();
+    let len1 = inner.mail.len();
+    // println!("=== mail len: {}", len1);
+    if len1 == 16 {
+        return -1;
+    }
+    if len == 0 {
+        return 0;
+    }
+    // println!("start get buffers");
+    let buffers = translated_byte_buffer(token, buf, len);
+    // println!("get buffers");
+    let u_buf = UserBuffer::new(buffers).into_iter();
+    let mut b = Vec::with_capacity(len);
+    for ele in u_buf {
+        unsafe {
+            b.push(*ele);
+        }
+    }
+    inner.mail.push_back(b);
+    let len1 = inner.mail.len();
+    // println!(">>> mail len: {}", len1);
+
+    len as _
+}
+
+fn fun_name(buf: *mut u8, len: usize, token: usize) -> isize {
+    let start = buf as usize;
+    let end = start + len;
+    let start_va = VirtAddr::from(start);
+    let end_va = VirtAddr::from(end);
+    let vpn = start_va.floor();
+    let evpn = end_va.floor();
+    let page_table = PageTable::from_token(token);
+    if page_table.translate(vpn).is_none() || page_table.translate(evpn).is_none() {
+        return -1;
+    }
     0
 }

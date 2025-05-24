@@ -1,4 +1,4 @@
-use super::TaskControlBlock;
+use super::{current_task, TaskControlBlock};
 use crate::sync::UPSafeCell;
 use alloc::collections::binary_heap::BinaryHeap;
 // use alloc::collections::VecDeque;
@@ -25,6 +25,13 @@ impl TaskManager {
             t.inner_exclusive_access().add_stride();
         })
     }
+    pub fn get_task(&mut self, pid: usize) -> Option<Arc<TaskControlBlock>> {
+        let task = current_task().unwrap();
+        if task.pid.0 == pid {
+            return task.into();
+        }
+        self.ready_queue.iter().find(|v| v.pid.0 == pid).cloned()
+    }
 }
 
 lazy_static! {
@@ -38,4 +45,8 @@ pub fn add_task(task: Arc<TaskControlBlock>) {
 
 pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
     TASK_MANAGER.exclusive_access().fetch()
+}
+
+pub fn get_task(pid: usize) -> Option<Arc<TaskControlBlock>> {
+    TASK_MANAGER.exclusive_access().get_task(pid)
 }
